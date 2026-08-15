@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NutriPlan — Your Wellness Journey</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.svg">
+
+<!-- Bootstrap 5 (grid + utilities only, visuals are custom) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-leaf"></i></div>
+      <div>
+        <div class="brand-name">NutriPlan</div>
+        <div class="brand-tag">Your Wellness Journey</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main Menu</div>
+      <a href="/" class="nav-link" data-link data-route="/">
+        <i class="fa-solid fa-utensils"></i> Meals &amp; Recipes
+      </a>
+      <a href="/productscanner" class="nav-link" data-link data-route="/productscanner">
+        <i class="fa-solid fa-barcode"></i> Product Scanner
+      </a>
+      <a href="/foodlog" class="nav-link" data-link data-route="/foodlog">
+        <i class="fa-solid fa-clipboard-list"></i> Food Log
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+        <div>
+          <div class="user-name">Youssef Amir</div>
+          <div class="user-role">Premium Member</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MOBILE TOPBAR ============ -->
+  <header class="mobile-topbar">
+    <button id="mobileMenuBtn" class="icon-btn" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+    <div class="brand-name">NutriPlan</div>
+  </header>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+  <!-- ============ MAIN CONTENT ============ -->
+  <main class="main-content">
+    <div id="app" class="page-container">
+      <!-- views render here -->
+    </div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="app-toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
