@@ -1,10 +1,9 @@
 import { ProductsAPI } from "../api.js";
-import { adaptProduct, adaptProductList, adaptCategoryList } from "../adapters.js";
+import { adaptProduct, adaptProductList } from "../adapters.js";
 import { qs, escapeHtml, fmt, nutriScoreColor, showToast } from "../utils.js";
 import { FoodLog } from "../storage.js";
 
 let state = {
-  categories: [], // { id, name }
   scoreFilter: "",
   products: [],
   loading: false,
@@ -12,7 +11,20 @@ let state = {
   error: null,
   nameQuery: "",
   barcodeQuery: "",
+  activeCategory: "",
 };
+
+/** Curated category chips matching the design mockup */
+const BROWSE_CATEGORIES = [
+  { id: "breakfast-cereals", name: "Breakfast Cereals", icon: "fa-wheat-awn", color: "#f97316" },
+  { id: "beverages", name: "Beverages", icon: "fa-bottle-water", color: "#06b6d4" },
+  { id: "snacks", name: "Snacks", icon: "fa-cookie", color: "#ec4899" },
+  { id: "dairy", name: "Dairy Products", icon: "fa-cheese", color: "#3b82f6" },
+  { id: "fruits", name: "Fruits", icon: "fa-apple-whole", color: "#ef4444" },
+  { id: "vegetables", name: "Vegetables", icon: "fa-carrot", color: "#22c55e" },
+  { id: "breads", name: "Breads", icon: "fa-bread-slice", color: "#ca8a04" },
+  { id: "meats", name: "Meats", icon: "fa-drumstick-bite", color: "#b91c1c" },
+];
 
 /** Categories that usually include Nutri-Score A / B products */
 const SCORE_BROWSE = {
@@ -23,16 +35,16 @@ const SCORE_BROWSE = {
   E: "sodas",
 };
 
-export async function renderProductScanner(container) {
-  state = { ...state, products: [], searched: false, error: null };
-  paint(container);
+const SCORE_COLORS = {
+  A: "#16a34a",
+  B: "#65a30d",
+  C: "#eab308",
+  D: "#f97316",
+  E: "#ef4444",
+};
 
-  try {
-    const raw = await ProductsAPI.categories();
-    state.categories = adaptCategoryList(raw).slice(0, 8);
-  } catch (err) {
-    console.warn("Could not load product categories", err);
-  }
+export async function renderProductScanner(container) {
+  state = { ...state, products: [], searched: false, error: null, activeCategory: "" };
   paint(container);
 }
 
@@ -48,46 +60,49 @@ function paint(container) {
       <p>Search for packaged food products to view nutrition information</p>
 
       <div class="scanner-input-row">
-        <input id="productNameInput" type="text" placeholder="Search by product name (e.g., Cheerios, Nutella, Coca-Cola…)" value="${escapeHtml(state.nameQuery)}" />
-        <button id="searchProductBtn" class="btn-brand"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <div class="scanner-field">
+          <input id="productNameInput" type="text" placeholder="Search by product name (e.g., Cheerios, Nutella, Coca-Cola…)" value="${escapeHtml(state.nameQuery)}" />
+          <i class="fa-solid fa-magnifying-glass field-icon"></i>
+        </div>
+        <button id="searchProductBtn" class="btn-scanner-search">Search</button>
       </div>
       <div class="scanner-or">or</div>
       <div class="scanner-input-row">
-        <input id="barcodeInput" type="text" placeholder="Enter barcode number (e.g., 7613034626844)" inputmode="numeric" value="${escapeHtml(state.barcodeQuery)}" />
+        <div class="scanner-field">
+          <input id="barcodeInput" type="text" placeholder="Enter barcode number (e.g., 7613034626844)" inputmode="numeric" value="${escapeHtml(state.barcodeQuery)}" />
+          <i class="fa-solid fa-barcode field-icon"></i>
+        </div>
         <button id="lookupBarcodeBtn" class="btn-orange"><i class="fa-solid fa-magnifying-glass"></i> Lookup</button>
       </div>
     </div>
 
-    <div style="margin-bottom:18px;">
-      <div style="font-size:13.5px;font-weight:700;margin-bottom:8px;">Filter by Nutri-Score:</div>
-      <div class="chip-row" id="scoreChips" style="margin-bottom:0;">
+    <div class="scanner-filters">
+      <div class="filter-label">Filter by Nutri-Score:</div>
+      <div class="chip-row score-row" id="scoreChips">
         ${["All", "A", "B", "C", "D", "E"]
           .map((s) => {
             const val = s === "All" ? "" : s;
             const active = state.scoreFilter === val;
-            const bg = val ? nutriScoreColor(val) : "";
+            const bg = val ? SCORE_COLORS[val] : "#6b7280";
             const allClass = s === "All" ? " all-chip" : "";
-            const style = active && bg ? `background:${bg}` : "";
-            return `<button type="button" class="score-chip${allClass} ${active ? "active" : ""}" data-score="${val}"
-                      style="${style}">${s}</button>`;
+            return `<button type="button" class="score-chip${allClass}${active ? " active" : ""}" data-score="${val}"
+                      style="background:${bg};color:#fff;border-color:transparent;${active ? "box-shadow:0 0 0 3px rgba(0,0,0,.12);transform:scale(1.06);" : "opacity:.85;"}">${s}</button>`;
           })
           .join("")}
       </div>
     </div>
 
-    ${
-      state.categories.length
-        ? `<div class="section-head"><h2 style="margin:0;">Browse by Category</h2></div>
-           <div class="chip-row" id="catChips">
-             ${state.categories
-               .map(
-                 (c) =>
-                   `<button type="button" class="chip" data-cat="${escapeHtml(c.id)}">${escapeHtml(c.name)}</button>`
-               )
-               .join("")}
-           </div>`
-        : ""
-    }
+    <div class="section-head"><h2 style="margin:0;">Browse by Category</h2></div>
+    <div class="chip-row cat-browse-row" id="catChips">
+      ${BROWSE_CATEGORIES.map(
+        (c) => `
+        <button type="button" class="cat-pill${state.activeCategory === c.id ? " active" : ""}" data-cat="${escapeHtml(c.id)}" style="background:${c.color}">
+          <i class="fa-solid ${c.icon}"></i> ${escapeHtml(c.name)}
+        </button>`
+      ).join("")}
+    </div>
+
+    ${!state.searched && !state.loading ? `<p class="scanner-hint">Search for products to see results</p>` : ""}
 
     <div id="productResults">${renderResults()}</div>
   `;
@@ -108,7 +123,7 @@ function renderResults() {
     return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h4>Something went wrong</h4><p>${escapeHtml(state.error)}</p></div>`;
   }
   if (!state.searched) {
-    return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-box-open"></i></div><h4>No products to display</h4><p>Search for a product, browse by category, or tap a Nutri-Score</p></div>`;
+    return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-box-open"></i></div><h4>No products to display</h4><p>Search for a product or browse by category</p></div>`;
   }
   const filtered = filteredProducts();
 
@@ -118,7 +133,7 @@ function renderResults() {
       : "Try another name, barcode, or Nutri-Score filter.";
     return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-box-open"></i></div><h4>No products found</h4><p>${scoreHint}</p></div>`;
   }
-  return `<div style="display:flex;flex-direction:column;gap:12px;">${filtered.map(productCard).join("")}</div>`;
+  return `<div class="product-results">${filtered.map(productCard).join("")}</div>`;
 }
 
 function productCard(p) {
@@ -135,7 +150,7 @@ function productCard(p) {
           <span>F ${fmt(p.nutrition.fat)}g</span>
         </div>
       </div>
-      ${p.nutriScore ? `<div class="score-chip active" style="background:${nutriScoreColor(p.nutriScore)}">${escapeHtml(p.nutriScore)}</div>` : ""}
+      ${p.nutriScore ? `<div class="score-chip active" style="background:${nutriScoreColor(p.nutriScore)};color:#fff;border:none">${escapeHtml(p.nutriScore)}</div>` : ""}
       <button class="btn-brand log-product-btn" style="flex-shrink:0;"><i class="fa-solid fa-plus"></i> Log</button>
     </div>`;
 }
@@ -143,14 +158,12 @@ function productCard(p) {
 async function runSearch(container, fn) {
   state.loading = true;
   state.error = null;
-  qs("#productResults", container).innerHTML = renderResults();
+  paint(container);
   try {
     const raw = await fn();
     let products;
     if (Array.isArray(raw) || raw?.products || raw?.data || raw?.results) {
       products = adaptProductList(raw).products;
-      // OpenFoodFacts often returns incomplete community entries with all-zero macros —
-      // hide those so Food Log isn't filled with useless 0 kcal items.
       const withMacros = products.filter(hasMacroData);
       products = withMacros.length ? withMacros : products;
     } else {
@@ -163,9 +176,10 @@ async function runSearch(container, fn) {
     console.error(err);
     state.error = "Couldn't fetch that product. Please check the name/barcode and try again.";
     state.products = [];
+    state.searched = true;
   } finally {
     state.loading = false;
-    qs("#productResults", container).innerHTML = renderResults();
+    paint(container);
   }
 }
 
@@ -176,25 +190,20 @@ function hasMacroData(p) {
 
 async function onScoreChip(container, score) {
   state.scoreFilter = score;
+  state.activeCategory = "";
 
-  // All — just clear filter and re-render (keep current results)
   if (!score) {
     paint(container);
     return;
   }
 
-  // Already have matching products in the current list
   if (state.searched && filteredProducts().length) {
     paint(container);
     return;
   }
 
-  // Load a category that typically has this Nutri-Score so A/B aren't empty
   const category = SCORE_BROWSE[score] || "fruits";
-  paint(container);
   await runSearch(container, () => ProductsAPI.byCategory(category, { limit: 40 }));
-  // Re-paint so chips stay in sync after async load
-  paint(container);
 }
 
 function bindEvents(container) {
@@ -202,6 +211,7 @@ function bindEvents(container) {
     const q = qs("#productNameInput", container).value.trim();
     if (!q) return showToast("Type a product name first", "error");
     state.nameQuery = q;
+    state.activeCategory = "";
     runSearch(container, () => ProductsAPI.search(q, { limit: 40 }));
   });
   qs("#productNameInput", container).addEventListener("keydown", (e) => {
@@ -212,6 +222,7 @@ function bindEvents(container) {
     const code = qs("#barcodeInput", container).value.trim();
     if (!code) return showToast("Enter a barcode number first", "error");
     state.barcodeQuery = code;
+    state.activeCategory = "";
     runSearch(container, () => ProductsAPI.byBarcode(code));
   });
   qs("#barcodeInput", container).addEventListener("keydown", (e) => {
@@ -227,7 +238,10 @@ function bindEvents(container) {
   qs("#catChips", container)?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-cat]");
     if (!btn) return;
-    runSearch(container, () => ProductsAPI.byCategory(btn.getAttribute("data-cat"), { limit: 40 }));
+    const cat = btn.getAttribute("data-cat");
+    state.activeCategory = cat;
+    state.scoreFilter = "";
+    runSearch(container, () => ProductsAPI.byCategory(cat, { limit: 40 }));
   });
 
   const results = qs("#productResults", container);

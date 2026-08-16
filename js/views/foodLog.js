@@ -1,5 +1,5 @@
 import { FoodLog, Goals } from "../storage.js";
-import { qs, escapeHtml, fmt, round, prettyDate, showToast } from "../utils.js";
+import { qs, escapeHtml, fmt, round, prettyDate, showToast, todayKey } from "../utils.js";
 
 export function renderFoodLog(container) {
   const removed = FoodLog.purgeEmptyMealNutrition();
@@ -13,6 +13,7 @@ function paint(container) {
   const items = FoodLog.getDay();
   const totals = FoodLog.totals();
   const goals = Goals.get();
+  const week = buildWeekStats(goals);
 
   container.innerHTML = `
     <div class="page-header">
@@ -20,38 +21,121 @@ function paint(container) {
       <p>Track your daily nutrition and food intake</p>
     </div>
 
-    <div class="foodlog-banner">
-      <div>
-        <h2><i class="fa-solid fa-clipboard-list"></i> Daily Food Log</h2>
-        <p>Track and monitor your daily nutrition intake</p>
+    <div class="foodlog-card">
+      <div class="foodlog-banner">
+        <div>
+          <h2><i class="fa-solid fa-clipboard-list"></i> Daily Food Log</h2>
+          <p>Track and monitor your daily nutrition intake</p>
+        </div>
+        <div class="date-badge">
+          <div class="sub">Today</div>
+          <div class="main">${prettyDate()}</div>
+        </div>
       </div>
-      <div class="date-badge">
-        <div class="sub">Today</div>
-        <div class="main">${prettyDate()}</div>
+
+      <div class="foodlog-body">
+        <div class="nutrition-block">
+          <h3><i class="fa-solid fa-fire"></i> Today's Nutrition</h3>
+          <div class="summary-grid">
+            ${statBlock("Calories", totals.calories, goals.calories, "kcal", "stat-calories")}
+            ${statBlock("Protein", totals.protein, goals.protein, "g", "stat-protein")}
+            ${statBlock("Carbs", totals.carbs, goals.carbs, "g", "stat-carbs")}
+            ${statBlock("Fat", totals.fat, goals.fat, "g", "stat-fat")}
+          </div>
+        </div>
+
+        <div class="logged-block">
+          <h3 class="logged-heading">Logged Items (${items.length})</h3>
+          <div id="loggedItemsList">
+            ${items.length ? items.map(itemRow).join("") : emptyState()}
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="nutrition-summary-card">
-      <h3><i class="fa-solid fa-fire" style="color:var(--orange)"></i> Today's Nutrition</h3>
-      <div class="summary-grid">
-        ${statBlock("Calories", totals.calories, goals.calories, "kcal", "stat-calories")}
-        ${statBlock("Protein", totals.protein, goals.protein, "g", "stat-protein")}
-        ${statBlock("Carbs", totals.carbs, goals.carbs, "g", "stat-carbs")}
-        ${statBlock("Fat", totals.fat, goals.fat, "g", "stat-fat")}
+    <div class="weekly-card">
+      <h3><i class="fa-solid fa-calendar-days"></i> Weekly Overview</h3>
+      <div class="week-strip">
+        ${week.days
+          .map(
+            (d) => `
+          <div class="week-day${d.isToday ? " is-today" : ""}">
+            <div class="wd-name">${escapeHtml(d.label)}</div>
+            <div class="wd-num">${d.dayNum}</div>
+            <div class="wd-kcal">${fmt(d.calories)} kcal</div>
+          </div>`
+          )
+          .join("")}
       </div>
     </div>
 
-    <div class="nutrition-summary-card">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2 style="margin:0;">Logged Items (${items.length})</h2>
+    <div class="week-stats-row">
+      <div class="week-stat-card">
+        <div class="week-stat-icon ws-green"><i class="fa-solid fa-chart-line"></i></div>
+        <div>
+          <div class="week-stat-label">Weekly Average</div>
+          <div class="week-stat-value">${fmt(week.avgCalories)} kcal</div>
+        </div>
       </div>
-      <div id="loggedItemsList">
-        ${items.length ? items.map(itemRow).join("") : emptyState()}
+      <div class="week-stat-card">
+        <div class="week-stat-icon ws-blue"><i class="fa-solid fa-utensils"></i></div>
+        <div>
+          <div class="week-stat-label">Total Items This Week</div>
+          <div class="week-stat-value">${fmt(week.totalItems)} items</div>
+        </div>
+      </div>
+      <div class="week-stat-card">
+        <div class="week-stat-icon ws-purple"><i class="fa-solid fa-bullseye"></i></div>
+        <div>
+          <div class="week-stat-label">Days On Goal</div>
+          <div class="week-stat-value">${week.daysOnGoal} / 7</div>
+        </div>
       </div>
     </div>
   `;
 
   bindEvents(container);
+}
+
+/** Monday–Sunday of the current week with per-day calories from localStorage. */
+function buildWeekStats(goals) {
+  const today = new Date();
+  const dow = today.getDay(); // 0=Sun
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(today.getDate() + mondayOffset);
+
+  const todayStr = todayKey();
+  const days = [];
+  let calSum = 0;
+  let totalItems = 0;
+  let daysOnGoal = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const items = FoodLog.getDay(key);
+    const totals = FoodLog.totals(key);
+    calSum += totals.calories;
+    totalItems += items.length;
+    if (totals.calories > 0 && totals.calories <= goals.calories) daysOnGoal += 1;
+    days.push({
+      key,
+      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      dayNum: d.getDate(),
+      calories: totals.calories,
+      isToday: key === todayStr,
+    });
+  }
+
+  return {
+    days,
+    avgCalories: round(calSum / 7),
+    totalItems,
+    daysOnGoal,
+  };
 }
 
 function statBlock(label, value, goal, unit, extraClass) {
@@ -68,7 +152,7 @@ function statBlock(label, value, goal, unit, extraClass) {
         <div class="progress-fill" style="width:${barPct}%"></div>
       </div>
       <div class="stat-bottom">
-        <span class="${over ? "warn" : ""}">${fmt(value)} ${unit}</span>
+        <span class="stat-current">${fmt(value)} ${unit}</span>
         <span>/ ${fmt(goal)} ${unit}</span>
       </div>
     </div>`;
@@ -94,11 +178,11 @@ function itemRow(item) {
 
 function emptyState() {
   return `
-    <div class="state-box">
+    <div class="state-box foodlog-empty">
       <div class="state-icon"><i class="fa-solid fa-utensils"></i></div>
       <h4>No food logged today</h4>
       <p>Start tracking your nutrition by logging meals or scanning products</p>
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+      <div class="foodlog-empty-actions">
         <a href="/" data-link class="btn-brand"><i class="fa-solid fa-plus"></i> Browse Recipes</a>
         <a href="/productscanner" data-link class="btn-blue"><i class="fa-solid fa-barcode"></i> Scan Product</a>
       </div>

@@ -409,7 +409,7 @@ button { font-family: var(--font-body); }
 
 /* ============ PRODUCT SCANNER ============ */
 .scanner-panel {
-  background: linear-gradient(135deg, var(--brand), #0d9488);
+  background: linear-gradient(135deg, #0f766e, #0d9488);
   border-radius: var(--radius-lg);
   padding: 26px 28px;
   color: #fff;
@@ -417,18 +417,50 @@ button { font-family: var(--font-body); }
 }
 .scanner-panel h2 { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
 .scanner-panel p { opacity: .92; font-size: 13.5px; margin: 0 0 18px; }
-.scanner-input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.scanner-input-row input {
-  flex: 1; min-width: 200px; padding: 12px 16px; border-radius: 10px; border: none; outline: none; font-size: 14px;
+.scanner-input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: stretch; }
+.scanner-field {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
 }
+.scanner-field input {
+  width: 100%;
+  padding: 12px 42px 12px 16px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+.scanner-field .field-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.btn-scanner-search {
+  background: #fff;
+  border: none;
+  color: #0f766e;
+  font-weight: 800;
+  padding: 11px 22px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.btn-scanner-search:hover { background: #f0fdfa; color: #0f766e; }
 .scanner-or { text-align: center; color: rgba(255,255,255,.75); font-size: 12px; font-weight: 700; margin: 4px 0 12px; position: relative; }
 .scanner-or::before, .scanner-or::after { content: ""; position: absolute; top: 50%; width: 42%; height: 1px; background: rgba(255,255,255,.35); }
 .scanner-or::before { left: 0; }
 .scanner-or::after { right: 0; }
 
+.scanner-filters { margin-bottom: 18px; }
+.filter-label { font-size: 13.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+.score-row { margin-bottom: 0; }
 .score-chip {
   width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 13px; border: 1px solid var(--border); color: var(--text-muted); background: var(--surface); cursor: pointer;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
 }
 .score-chip.all-chip {
   width: auto;
@@ -438,10 +470,43 @@ button { font-family: var(--font-body); }
 }
 .score-chip.active { color: #fff; border-color: transparent; }
 .score-chip.all-chip.active {
-  background: var(--brand);
+  background: #6b7280;
   color: #fff;
 }
 
+.cat-browse-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.cat-pill {
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: .92;
+  transition: transform .15s, opacity .15s, box-shadow .15s;
+}
+.cat-pill:hover { opacity: 1; transform: translateY(-1px); }
+.cat-pill.active { opacity: 1; box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
+
+.scanner-hint {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13.5px;
+  margin: 8px 0 4px;
+}
+
+.product-results { display: flex; flex-direction: column; gap: 12px; }
 .product-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 16px; display: flex; gap: 14px; align-items: center;
@@ -452,13 +517,21 @@ button { font-family: var(--font-body); }
 .product-card .pmacros { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* ============ FOOD LOG ============ */
-.foodlog-banner {
-  background: linear-gradient(120deg, var(--purple-1), var(--purple-2));
+.foodlog-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+}
+.foodlog-banner {
+  background: linear-gradient(120deg, #7c3aed, #8b5cf6);
   padding: 24px 28px;
   color: #fff;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 0;
+  border-radius: 0;
 }
 .foodlog-banner h2 { font-size: 19px; font-weight: 800; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
 .foodlog-banner p { margin: 0; opacity: .9; font-size: 13.5px; }
@@ -466,21 +539,35 @@ button { font-family: var(--font-body); }
 .foodlog-banner .date-badge .sub { font-size: 12px; opacity: .85; }
 .foodlog-banner .date-badge .main { font-weight: 800; font-size: 16px; }
 
-.nutrition-summary-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 22px 24px; margin-bottom: 22px;
+.foodlog-body { padding: 22px 24px 8px; }
+.nutrition-block { margin-bottom: 8px; }
+.nutrition-block > h3 {
+  font-size: 15.5px; font-weight: 800; margin: 0 0 16px;
+  display: flex; align-items: center; gap: 8px;
 }
-.nutrition-summary-card > h3 { font-size: 15.5px; font-weight: 800; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
-.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.nutrition-block > h3 i { color: var(--orange); }
+
+.logged-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
 .summary-stat .stat-top { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; margin-bottom: 8px; }
 .summary-stat .stat-top .pct { font-weight: 800; }
-.progress-track { height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; margin-bottom: 8px; }
+.progress-track { height: 8px; border-radius: 999px; background: #eef0f3; overflow: hidden; margin-bottom: 8px; }
 .progress-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
 .summary-stat .stat-bottom { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); font-weight: 600; }
-.stat-calories .pct, .stat-calories .progress-fill { color: var(--brand-dark); background: var(--brand); }
-.stat-protein .pct { color: var(--blue); } .stat-protein .progress-fill { background: var(--blue); }
-.stat-carbs .pct { color: var(--orange); } .stat-carbs .progress-fill { background: var(--orange); }
-.stat-fat .pct { color: var(--purple); } .stat-fat .progress-fill { background: var(--purple); }
+.stat-calories .pct, .stat-calories .stat-current { color: var(--brand-dark); }
+.stat-calories .progress-fill { background: var(--brand); }
+.stat-protein .pct, .stat-protein .stat-current { color: var(--blue); }
+.stat-protein .progress-fill { background: var(--blue); }
+.stat-carbs .pct, .stat-carbs .stat-current { color: var(--orange); }
+.stat-carbs .progress-fill { background: var(--orange); }
+.stat-fat .pct, .stat-fat .stat-current { color: var(--purple); }
+.stat-fat .progress-fill { background: var(--purple); }
 .summary-stat.is-over .pct {
   color: #fff !important;
   background: var(--red) !important;
@@ -489,9 +576,12 @@ button { font-family: var(--font-body); }
   font-size: 12px;
 }
 .summary-stat.is-over .progress-fill { background: var(--red) !important; }
-.summary-stat .stat-bottom .warn { color: var(--red); }
-.stat-calories .stat-top .num { color: var(--brand-dark); }
-.summary-stat .stat-top .num.warn { color: var(--red); }
+.summary-stat.is-over .stat-current { color: var(--red); }
+
+.foodlog-empty { padding: 48px 20px 40px; }
+.foodlog-empty-actions {
+  display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap;
+}
 
 .logged-item {
   display: flex; align-items: center; gap: 14px;
@@ -502,6 +592,96 @@ button { font-family: var(--font-body); }
 .logged-item .name { font-weight: 700; font-size: 14.5px; }
 .logged-item .meta { font-size: 12px; color: var(--text-muted); }
 .logged-item .macros { font-size: 12px; color: var(--text-muted); text-align: right; margin-left: auto; margin-right: 8px; white-space: nowrap; }
+
+.weekly-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.weekly-card > h3 {
+  font-size: 15.5px;
+  font-weight: 800;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weekly-card > h3 i { color: var(--purple); }
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.week-day {
+  text-align: center;
+  padding: 12px 6px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.week-day.is-today {
+  background: #ede9fe;
+}
+.week-day .wd-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.week-day .wd-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.week-day.is-today .wd-num { color: #6d28d9; }
+.week-day .wd-kcal {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.week-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.week-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.week-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.week-stat-icon.ws-green { background: #d1fae5; color: #059669; }
+.week-stat-icon.ws-blue { background: #dbeafe; color: #2563eb; }
+.week-stat-icon.ws-purple { background: #ede9fe; color: #7c3aed; }
+.week-stat-label { font-size: 12.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
+.week-stat-value { font-size: 18px; font-weight: 800; color: var(--text); }
+
+@media (max-width: 720px) {
+  .week-strip { gap: 4px; }
+  .week-day { padding: 10px 4px; }
+  .week-day .wd-num { font-size: 15px; }
+  .week-stats-row { grid-template-columns: 1fr; }
+}
 
 /* ============ TOAST ============ */
 .app-toast {
