@@ -70,8 +70,8 @@ vercel
 ### Option C — GitHub Pages
 
 1. Repo **Settings → Pages** → deploy from `main` / root (or `/docs`).
-2. History-API routes need a `404.html` copy of `index.html`, **or** use hash routing.  
-   Prefer **Vercel/Netlify** for this app’s `/foodlog`-style URLs.
+2. The app auto-detects the `/repo-name` base path so CSS/JS load correctly.
+3. `404.html` (same as `index.html`) lets client routes like `/foodlog` work after refresh.
 
 ### After deploy
 

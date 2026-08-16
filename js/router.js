@@ -3,6 +3,8 @@
 // the URL bar updates per tab: /, /productscanner, /foodlog, /meal/:id)
 // ============================================================
 
+import { withBase, stripBase } from "./base.js";
+
 const routes = []; // { pattern: RegExp, keys: string[], handler: fn }
 
 function compile(path) {
@@ -41,13 +43,14 @@ function matchRoute(pathname) {
 }
 
 export function navigate(path, { replace = false } = {}) {
-  if (replace) history.replaceState({}, "", path);
-  else history.pushState({}, "", path);
+  const url = withBase(path);
+  if (replace) history.replaceState({}, "", url);
+  else history.pushState({}, "", url);
   render();
 }
 
 export function render() {
-  const pathname = window.location.pathname || "/";
+  const pathname = stripBase(window.location.pathname || "/");
   const match = matchRoute(pathname) || matchRoute("/404");
   if (match) {
     match.handler(match.params);
