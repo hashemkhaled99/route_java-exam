@@ -19,7 +19,7 @@ const BROWSE_CATEGORIES = [
   { id: "breakfast-cereals", name: "Breakfast Cereals", icon: "fa-wheat-awn", color: "#f97316" },
   { id: "beverages", name: "Beverages", icon: "fa-bottle-water", color: "#06b6d4" },
   { id: "snacks", name: "Snacks", icon: "fa-cookie", color: "#ec4899" },
-  { id: "dairy", name: "Dairy Products", icon: "fa-cheese", color: "#3b82f6" },
+  { id: "dairies", name: "Dairy Products", icon: "fa-cheese", color: "#3b82f6" },
   { id: "fruits", name: "Fruits", icon: "fa-apple-whole", color: "#ef4444" },
   { id: "vegetables", name: "Vegetables", icon: "fa-carrot", color: "#22c55e" },
   { id: "breads", name: "Breads", icon: "fa-bread-slice", color: "#ca8a04" },
