@@ -39,11 +39,40 @@ export function hasUsdaApiKey() {
   return Boolean(key) && key !== "YOUR_USDA_API_KEY";
 }
 
-let lastRequestAt = 0;
-const MIN_GAP_MS = 150;
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Serialize all calls — parallel clicks were stacking into upstream 429s
+let queue = Promise.resolve();
+let lastRequestAt = 0;
+const MIN_GAP_MS = 450;
+const MAX_ATTEMPTS = 5;
+
+/** Short-lived GET cache so re-clicking a cuisine doesn't re-hit the API. */
+const getCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function cacheKey(method, url) {
+  return `${method}:${url}`;
+}
+
+function getCached(key) {
+  const hit = getCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > CACHE_TTL_MS) {
+    getCache.delete(key);
+    return null;
+  }
+  return hit.data;
+}
+
+function setCached(key, data) {
+  getCache.set(key, { at: Date.now(), data });
+}
+
+function isRateLimited(status, detail) {
+  return status === 429 || /"status code 429"|too many requests/i.test(detail || "");
 }
 
 async function request(path, { method = "GET", params, body, headers } = {}) {
@@ -56,43 +85,57 @@ async function request(path, { method = "GET", params, body, headers } = {}) {
     if (qs) url += `?${qs}`;
   }
 
-  // Soft throttle + retry: upstream wraps OpenFoodFacts/MealDB 429 as HTTP 500
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const gap = MIN_GAP_MS - (Date.now() - lastRequestAt);
-    if (gap > 0) await sleep(gap);
-    lastRequestAt = Date.now();
+  const key = cacheKey(method, url);
+  if (method === "GET") {
+    const cached = getCached(key);
+    if (cached !== null) return cached;
+  }
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        ...(body ? { "Content-Type": "application/json" } : {}),
-        ...headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  const run = async () => {
+    let lastError;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const gap = MIN_GAP_MS - (Date.now() - lastRequestAt);
+      if (gap > 0) await sleep(gap);
+      lastRequestAt = Date.now();
 
-    if (res.ok) {
-      const text = await res.text();
-      return text ? JSON.parse(text) : null;
-    }
+      const res = await fetch(url, {
+        method,
+        headers: {
+          ...(body ? { "Content-Type": "application/json" } : {}),
+          ...headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
 
-    let detail = "";
-    try {
-      detail = JSON.stringify(await res.json());
-    } catch {
-      /* ignore */
-    }
+      if (res.ok) {
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : null;
+        if (method === "GET") setCached(key, data);
+        return data;
+      }
 
-    const rateLimited = res.status === 429 || /"status code 429"|too many requests/i.test(detail);
-    lastError = new Error(`API ${res.status} on ${path} ${detail}`);
-    if (rateLimited && attempt < 2) {
-      await sleep(600 * (attempt + 1));
-      continue;
+      let detail = "";
+      try {
+        detail = JSON.stringify(await res.json());
+      } catch {
+        /* ignore */
+      }
+
+      lastError = new Error(`API ${res.status} on ${path} ${detail}`);
+      // Upstream wraps MealDB/OFF 429 as HTTP 500 with "status code 429" in body
+      if (isRateLimited(res.status, detail) && attempt < MAX_ATTEMPTS - 1) {
+        await sleep(800 * 2 ** attempt); // 0.8s, 1.6s, 3.2s, 6.4s
+        continue;
+      }
+      throw lastError;
     }
     throw lastError;
-  }
-  throw lastError;
+  };
+
+  // Chain onto the queue so only one in-flight request at a time
+  const next = queue.then(run, run);
+  queue = next.catch(() => {});
+  return next;
 }
 
 // ---------------- Meals (Swagger: Meals tag) ----------------

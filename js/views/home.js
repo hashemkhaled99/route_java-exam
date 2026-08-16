@@ -16,10 +16,21 @@ let state = {
 
 /** Ignores stale meal responses when the user clicks cuisines quickly. */
 let loadSeq = 0;
-let enrichSeq = 0;
+
+/** Known MealDB-style cuisines (API /meals/areas returns unrelated country names). */
+const KNOWN_AREAS = [
+  "American", "Australian", "British", "Canadian", "Chinese", "Croatian", "Dutch",
+  "Egyptian", "Filipino", "French", "Greek", "Indian", "Irish", "Italian", "Jamaican",
+  "Japanese", "Kenyan", "Malaysian", "Mexican", "Moroccan", "Polish", "Portuguese",
+  "Russian", "Spanish", "Thai", "Tunisian", "Turkish", "Ukrainian", "Vietnamese",
+];
 
 export async function renderHome(container) {
   state = { ...state, loading: true, error: null };
+  // Seed cuisine chips so filters work before the first meal batch returns
+  state.areas = [...new Set([...KNOWN_AREAS, ...state.areas])].sort((a, b) =>
+    a.localeCompare(b)
+  );
   paint(container);
 
   const catsPromise = MealsAPI.categories()
@@ -29,13 +40,9 @@ export async function renderHome(container) {
     .catch((err) => console.warn("Could not load categories", err));
 
   await loadMeals(container);
-
   mergeAreasFromMeals(state.meals);
   await catsPromise;
   renderAreaChips(container);
-
-  // One light extra random sample (NOT one request per category) — avoids API 429s
-  enrichAreasLightly(container).catch(() => {});
 }
 
 function mergeAreasFromMeals(meals) {
@@ -44,22 +51,6 @@ function mergeAreasFromMeals(meals) {
     if (m.area) set.add(m.area);
   });
   state.areas = [...set].sort((a, b) => a.localeCompare(b));
-}
-
-/** Grow cuisine chips with one extra random batch — no category flood. */
-async function enrichAreasLightly(container) {
-  const seq = ++enrichSeq;
-  try {
-    await new Promise((r) => setTimeout(r, 500));
-    if (seq !== enrichSeq) return;
-    const raw = await MealsAPI.random({ count: 25 });
-    if (seq !== enrichSeq) return;
-    const before = state.areas.length;
-    mergeAreasFromMeals(adaptMealList(raw).meals);
-    if (state.areas.length !== before) renderAreaChips(container);
-  } catch {
-    /* rate-limit or network — chips from current meals are enough */
-  }
 }
 
 async function loadMeals(container) {
@@ -177,7 +168,7 @@ function renderResults() {
     return `<div class="meal-grid">${Array.from({ length: 8 }).map(() => `<div class="skeleton" style="height:280px"></div>`).join("")}</div>`;
   }
   if (state.error) {
-    return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h4>Something went wrong</h4><p>${escapeHtml(state.error)}</p></div>`;
+    return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h4>Something went wrong</h4><p>${escapeHtml(state.error)}</p><button type="button" id="retryMealsBtn" class="btn-brand" style="display:inline-flex;margin-top:14px;"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
   }
   if (!state.meals.length) {
     return `<div class="state-box"><div class="state-icon"><i class="fa-solid fa-bowl-food"></i></div><h4>No recipes found</h4><p>Try a different search term or filter.</p></div>`;
@@ -222,7 +213,9 @@ function bindEvents(container) {
   qs("#areaChips", container)?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-area]");
     if (!btn) return;
-    state.area = btn.getAttribute("data-area");
+    const next = btn.getAttribute("data-area");
+    if (next === state.area && !state.error) return;
+    state.area = next;
     state.query = "";
     loadMeals(container);
   });
@@ -233,6 +226,10 @@ function bindEvents(container) {
     const next = tile.getAttribute("data-category");
     state.category = state.category === next ? "" : next;
     state.query = "";
+    loadMeals(container);
+  });
+
+  qs("#retryMealsBtn", container)?.addEventListener("click", () => {
     loadMeals(container);
   });
 
